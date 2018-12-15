@@ -48,7 +48,7 @@ table_server: $(OBJETOS_t_server)
 	$(CC) $(addprefix $(OBJ_dir)/, $(OBJETOS_t_server)) -o binary/server
 
 table_client: $(OBJETOS_t_cliente)
-	$(CC) $(addprefix $(OBJ_dir)/,$(OBJETOS_t_cliente)) -o binary/client
+	$(CC) -pthread $(addprefix $(OBJ_dir)/,$(OBJETOS_t_cliente)) -o binary/client
 
 client-lib.o: $(addprefix object/, message.o client_stub.o network_client.o data.o entry.o)
 	ld -r $(addprefix $(OBJ_dir)/, message.o client_stub.o network_client.o data.o entry.o) -o object/client-lib.o

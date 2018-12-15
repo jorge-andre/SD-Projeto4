@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "network_client.h"
 #include "client_stub.h"
@@ -14,13 +15,22 @@
 #include "data.h"
 #include "table-client.h"
 
+struct thread_parametros{
+	char *address_port;
+};
+
 int COM_SPACE = 200;
 int KEY_SPACE = 50;
 int DATA_SPACE = 150;
+int key_number = 1;
 
 int main(int argc, char **argv){
 
 	int program_output = 0;
+	pthread_t *threads;
+	pthread_t thread;
+	struct thread_parametros thread_param;
+	int nthreads;
 
 	/* Testar os argumentos de entrada */
 	switch(argc){
@@ -29,8 +39,25 @@ int main(int argc, char **argv){
 			break;
 
 		case 5:
+			nthreads = atoi(argv[4]);
+			threads = malloc(sizeof(pthread_t) * nthreads); //Usa o numero de threads especificado no parametro
+
+			thread_param.address_port = argv[1];
+
 			if(strcmp(argv[2], "p") == 0){
-				program_output = put_cicle(argv[1], argv[3]);
+				for(int i = 0; i < nthreads; i++){
+					if(pthread_create(&threads[i], NULL, &thread_put, (void *) &thread_param) != 0){
+						return -1;
+					}
+				}
+
+				sleep(atoi(argv[3]));
+				
+				for(int i = 0; i < nthreads; i++){
+					pthread_cancel(threads[i]);
+				}
+				printf("n puts: %d\n", key_number);
+
 			} else if(strcmp(argv[2], "g") == 0){
 				program_output = get_cicle(argv[1], argv[3]);
 			} else{
@@ -39,7 +66,7 @@ int main(int argc, char **argv){
 			break;
 
 		default:
-			printf("Numero de argumentos incorrecto.");
+			printf("Numero de argumentos incorrecto.\n");
 			break;
 	}
 
@@ -48,15 +75,22 @@ int main(int argc, char **argv){
 	
 }
 
-int put_cicle(char *address_port, char *secs){
+void *thread_put(void *parametros){
+	struct thread_parametros *tp = (struct thread_parametros *) parametros;
+	char *address = tp->address_port;
+
+	put_cicle(address);
+
+	return 0;
+
+}
+
+int put_cicle(char *address_port){
 
 	struct rtable_t *rtable;
 	char *key = malloc(KEY_SPACE);
 	char *data = malloc(DATA_SPACE);
-	int seconds = atoi(secs);
-	time_t start, stop;
-	data = "put automatico";
-	int key_number = 1;
+	sprintf(data, "%d", (int) getpid());
 
 	rtable = rtable_connect(address_port);
 
@@ -64,20 +98,16 @@ int put_cicle(char *address_port, char *secs){
 		printf("Erro na ligaçao ao servidor\n");	
 		exit(-1);
 	}
-	start = time(NULL);
-	stop = time(NULL);
 
-	while(stop - start < seconds){
+	while(1){
 		sprintf(key, "%d", key_number);
 
 		if(rtable_put(rtable, entry_create(key, data_create2(strlen(data), data))) != 0){
 			printf("Erro ao adicionar.\n");
 		}
 		key_number++;
-		stop = time(NULL);
 	}
 
-	printf("n puts: %d\n", atoi(key));
 
 	return rtable_disconnect(rtable);
 }
