@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <pthread.h>
 
 #include "network_server.h"
+#include "network_server-private.h"
 
 int sockfd;
 
@@ -11,6 +13,11 @@ int sockfd;
 struct sockaddr_in server;
 struct sockaddr_in client;
 socklen_t size_client;
+pthread_mutex_t mtx;
+
+struct thread_parametros{
+  int socket;
+};
 
 int network_server_init(short port){
 
@@ -50,8 +57,12 @@ int network_server_init(short port){
  */
 int network_main_loop(int listening_socket){
 
-	struct message_t  *msg;
-	int socket_de_cliente;
+    int socket_de_cliente;
+    int i = 0;
+    pthread_t *threads;
+    struct thread_parametros tp;
+
+    pthread_mutex_init(&mtx, NULL);
 
 	while((socket_de_cliente = accept(listening_socket,(struct sockaddr * restrict) &client, &size_client)) != -1){
 
@@ -61,31 +72,51 @@ int network_main_loop(int listening_socket){
       while((aux = recv(socket_de_cliente,buf,len,MSG_PEEK))!=0){
 
       if(aux != -1){
-*/
-    while ((msg = network_receive(socket_de_cliente)) != NULL){ // ate haver msg para ler
-      //msg = network_receive(socket_de_cliente);
- 
+*/  
+        threads = realloc(threads, sizeof(threads) + sizeof(long));
+        i++;
+        tp.socket = socket_de_cliente;
 
-			if (invoke(msg)<0) {
-        close(socket_de_cliente);
-				return -1;
-			}
+        if(pthread_create(&threads[i], NULL, connection_handler, (void *) &tp) < 0){
+            printf("Erro criar thread\n");
+            return -1;
+        }
+
+        pthread_join(threads[i], NULL);
+
+	}
 
 
-			if (network_send(socket_de_cliente,msg) < 0) {
-				close(socket_de_cliente);
+	if (socket_de_cliente < 0) {
+		close(socket_de_cliente);
         return -1;
-			}
-      }
-      //}
-	  }
-
-		if (socket_de_cliente < 0) {
-			close(socket_de_cliente);
-      return -1;
-		}
+	}
 
   return 0;
+}
+
+void *connection_handler(void *params){
+    struct thread_parametros *tp = (struct thread_parametros *) params;
+    int socket = tp->socket;
+	struct message_t  *msg;
+
+    while ((msg = network_receive(socket)) != NULL){ // ate haver msg para ler
+ 
+        pthread_mutex_lock(&mtx);
+		if (invoke(msg)<0) {
+            close(socket);
+			return -1;
+		}
+        pthread_mutex_unlock(&mtx);
+
+
+		if (network_send(socket,msg) < 0) {
+			close(socket);
+            return -1;
+		}
+    }
+
+    return 0;
 }
 
 /* Esta função deve:
@@ -237,7 +268,7 @@ int network_send(int client_socket, struct message_t *msg){
 
 
 	if ((nbytes = write_all(client_socket, buf , size_b)) < size_b) {
-    printf("socket fechado\n");
+        printf("socket fechado\n");
 		close(client_socket);
 		free(buf);
 		return -1;

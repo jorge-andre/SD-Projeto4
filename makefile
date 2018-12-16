@@ -33,10 +33,10 @@ read_write.o = read_write.h
 base64.o = base64.h
 
 
-network_server.o = network_server.h message.h table_skel.h read_write.h inet.h
+network_server.o = network_server.h message.h table_skel.h read_write.h inet.h network_server-private.h
 read_write.o = inet.h read_write.h
 table_skel.o = message.h table_skel.h table.h
-table-server.o = network_server.h table_skel.h message.h read_write.h inter.h
+table-server.o = network_server.h table_skel.h message.h read_write.h inter.h network_server-private.h
 
 
 CC = gcc
@@ -45,7 +45,7 @@ CFLAGS = -g -Wall -I ./include
 all: table_client table_server client-lib.o
 
 table_server: $(OBJETOS_t_server)
-	$(CC) $(addprefix $(OBJ_dir)/, $(OBJETOS_t_server)) -o binary/server
+	$(CC) -pthread $(addprefix $(OBJ_dir)/, $(OBJETOS_t_server)) -o binary/server
 
 table_client: $(OBJETOS_t_cliente)
 	$(CC) -pthread $(addprefix $(OBJ_dir)/,$(OBJETOS_t_cliente)) -o binary/client
