@@ -58,6 +58,7 @@ int main(int argc, char **argv){
 				for(int i = 0; i < nthreads; i++){
 					pthread_cancel(threads[i]);
 				}
+				free(threads);
 				printf("n puts: %d\n", key_number);
 				program_output = 0;
 
@@ -73,6 +74,7 @@ int main(int argc, char **argv){
 				for(int i = 0; i < nthreads; i++){
 					pthread_cancel(threads[i]);
 				}
+				free(threads);
 				printf("n gets: %d\n", ngets);
 				program_output = 0;
 

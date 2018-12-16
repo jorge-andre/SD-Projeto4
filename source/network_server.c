@@ -59,7 +59,7 @@ int network_main_loop(int listening_socket){
 
     int socket_de_cliente;
     int i = 0;
-    pthread_t *threads;
+    pthread_t *threads = malloc(sizeof(long));
     struct thread_parametros tp;
 
     pthread_mutex_init(&mtx, NULL);
@@ -85,6 +85,7 @@ int network_main_loop(int listening_socket){
         pthread_join(threads[i], NULL);
 
 	}
+  free(threads);
 
 
 	if (socket_de_cliente < 0) {
