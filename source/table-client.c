@@ -23,12 +23,13 @@ int COM_SPACE = 200;
 int KEY_SPACE = 50;
 int DATA_SPACE = 150;
 int key_number = 1;
+int ngets = 0;
+pthread_mutex_t mtx;
 
 int main(int argc, char **argv){
 
 	int program_output = 0;
 	pthread_t *threads;
-	pthread_t thread;
 	struct thread_parametros thread_param;
 	int nthreads;
 
@@ -41,6 +42,7 @@ int main(int argc, char **argv){
 		case 5:
 			nthreads = atoi(argv[4]);
 			threads = malloc(sizeof(pthread_t) * nthreads); //Usa o numero de threads especificado no parametro
+			pthread_mutex_init(&mtx, NULL);
 
 			thread_param.address_port = argv[1];
 
@@ -57,12 +59,27 @@ int main(int argc, char **argv){
 					pthread_cancel(threads[i]);
 				}
 				printf("n puts: %d\n", key_number);
+				program_output = 0;
 
 			} else if(strcmp(argv[2], "g") == 0){
-				program_output = get_cicle(argv[1], argv[3]);
+				for(int i = 0; i < nthreads; i++){
+					if(pthread_create(&threads[i], NULL, &thread_get, (void *) &thread_param) != 0){
+						return -1;
+					}
+				}
+
+				sleep(atoi(argv[3]));
+				
+				for(int i = 0; i < nthreads; i++){
+					pthread_cancel(threads[i]);
+				}
+				printf("n gets: %d\n", ngets);
+				program_output = 0;
+
 			} else{
 				program_output = -1;
 			}
+			pthread_mutex_destroy(&mtx);
 			break;
 
 		default:
@@ -85,6 +102,16 @@ void *thread_put(void *parametros){
 
 }
 
+void *thread_get(void *parametros){
+	struct thread_parametros *tp = (struct thread_parametros *) parametros;
+	char *address = tp->address_port;
+
+	get_cicle(address);
+
+	return 0;
+
+}
+
 int put_cicle(char *address_port){
 
 	struct rtable_t *rtable;
@@ -100,25 +127,25 @@ int put_cicle(char *address_port){
 	}
 
 	while(1){
+		pthread_mutex_lock(&mtx);
 		sprintf(key, "%d", key_number);
 
 		if(rtable_put(rtable, entry_create(key, data_create2(strlen(data), data))) != 0){
 			printf("Erro ao adicionar.\n");
 		}
 		key_number++;
+		pthread_mutex_unlock(&mtx);
 	}
 
 
 	return rtable_disconnect(rtable);
 }
 
-int get_cicle(char *address_port, char *secs){
+int get_cicle(char *address_port){
 
 	struct rtable_t *rtable;
 	char *key = malloc(KEY_SPACE);
-	int seconds = atoi(secs);
-	time_t start, stop;
-	int key_number = 1;
+	struct data_t *d;
 
 	rtable = rtable_connect(address_port);
 
@@ -126,20 +153,18 @@ int get_cicle(char *address_port, char *secs){
 		printf("Erro na ligaçao ao servidor\n");	
 		exit(-1);
 	}
-	start = time(NULL);
-	stop = time(NULL);
 
-	while(stop - start < seconds){
+	while(1){
+		pthread_mutex_lock(&mtx);
 		sprintf(key, "%d", key_number);
 
-		if(rtable_get(rtable, key) != 0){
-			printf("Erro ao fazer o get.\n");
+		if ((d = rtable_get(rtable,key)) != NULL) {
+			ngets++;
+			data_destroy(d);
 		}
 		key_number++;
-		stop = time(NULL);
+		pthread_mutex_unlock(&mtx);
 	}
-
-	printf("n gets: %d\n", atoi(key));
 
 	return rtable_disconnect(rtable);
 }

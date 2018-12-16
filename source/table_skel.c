@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "message.h"
 #include "table_skel.h"
@@ -37,7 +38,6 @@ int invoke(struct message_t *msg){
     msg -> content.result = table_size(table);
 
   }else if (msg -> opcode == OP_DEL) {
-
     if (table_del(table,msg -> content.key) == -1) {
       msg -> opcode = OP_ERROR;
     }else{

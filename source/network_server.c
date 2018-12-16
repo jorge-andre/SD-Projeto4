@@ -64,6 +64,7 @@ int network_main_loop(int listening_socket){
 */
     while ((msg = network_receive(socket_de_cliente)) != NULL){ // ate haver msg para ler
       //msg = network_receive(socket_de_cliente);
+ 
 
 			if (invoke(msg)<0) {
         close(socket_de_cliente);
@@ -103,7 +104,7 @@ struct message_t *network_receive(int client_socket){
   
   if ((nbytes=read_all(client_socket,buf,OPCODE_SIZE)) != OPCODE_SIZE) {
 
-    printf("socket fechado3\n");
+    printf("socket fechado\n");
     close(client_socket);
     free(buf);
     return NULL;
